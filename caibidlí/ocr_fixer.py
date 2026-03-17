@@ -39,24 +39,46 @@ class OCRFixer:
         return text
 
     def dehyphenate(self, text):
-        # Rejoin words split by line-end hyphens
-        # Conservative: don't join if first part is n, t, h (Irish prefixes)
-        # Use a function to log and decide
+        # Regex: word boundary, word chars, hyphen, horizontal space, newline, optional horizontal space, word chars
+        # Conservative: do not rejoin if first part is n, t, h (Irish prefixes)
+        pattern = r'(\b\w+)-[^\S\r\n]*\n[^\S\r\n]*(\w+)'
+        
         def repl(match):
             w1 = match.group(1)
-            sep = match.group(2) # captures whitespace and newline
-            w2 = match.group(3)
+            w2 = match.group(2)
             
-            # If it's an Irish prefix, keep the hyphen
+            # Constraint: Do not rejoin if it is an Irish mutative prefix
             if w1.lower() in ('n', 't', 'h'):
                 return f"{w1}-{w2}\n"
             
-            # Otherwise, assume it's a split word and rejoin
+            # Otherwise assume it is an OCR split word
             print(f"INFO: De-hyphenating '{w1}-{w2}'", file=sys.stderr)
             return f"{w1}{w2}\n"
 
-        # Regex: word boundary, word chars, hyphen, horizontal space, newline, optional horizontal space, word chars
-        return re.sub(r'(\b\w+)-[^\S\r\n]*\n[^\S\r\n]*(\w+)', repl, text)
+        return re.sub(pattern, repl, text, flags=re.MULTILINE)
+
+    def apply_stray_caps_fix(self, text):
+        # 1. Single letter capitals in the middle of sentences.
+        def lower_single(match):
+            return match.group(1) + match.group(2).lower()
+        
+        # Avoid lowering if preceded by sentence endings or quotes
+        text = re.sub(r'([^.!?“”"’\n]\s+)([A-ZÁÉÍÓÚḂĊḊḞĠṀṖṠṪ])(?=[\s.,;!?“”"’]|$)', lower_single, text)
+        
+        # 2. Mixed case words that start with a lowercase letter.
+        def lower_mixed(match):
+            word = match.group(1)
+            # Valid Irish mutative prefixes
+            m = re.match(r'^(t|h|n|m|g|d|b|bh|mh|ts)([A-ZÁÉÍÓÚḂĊḊḞĠṀṖṠṪ])(.*)$', word)
+            if m:
+                return m.group(1) + m.group(2) + m.group(3).lower()
+            else:
+                return word.lower()
+                
+        # Find words starting with lowercase letter and containing an uppercase letter.
+        text = re.sub(r'\b([a-záéíóúḃċḋḟġṁṗṡṫ]+[A-ZÁÉÍÓÚḂĊḊḞĠṀṖṠṪ][\w\'’]*)\b', lower_mixed, text)
+        
+        return text
 
     def apply_contextual_heuristics(self, line):
         for rule in self.data["dictionary"].get("contextual", []):
@@ -107,30 +129,24 @@ class OCRFixer:
         text = line.strip()
         if not text: return False
         
-        # Conservative patterns for "MANANNÁN" page headers
-        patterns = [
-            r'^[I M S A 0-9\.]*\s*MANANNÁN.*$',
-            r'^[^\w]*[I M S A]*\s*[M m][A a][N n ]+[A a][N n ]*[Á á][N n ].*$',
-            r'^[I M S A \.]*[A a][N n ]+[A a][N n ]+[A a][N n ]+[A a][N n ]+[Á á][N n ].*$',
-            r'^[^\w]*manannán[^\w]*$',
-            r'^IN AN AN N ÁN.*$',
-            r'^iii\s*man\s*annánn.*$',
-            r'^manann án m.*$',
-            r'^A mAn annán.*$',
-            r'^óO mAnannán.*$'
-        ]
-        
-        # Don't match if it's a long sentence (headers are short)
-        if len(text) > 40: return False
-        
         # Don't match if it's already a page marker
         if re.match(r'^\[l\.\d+\]: #', text): return False
 
+        # Load patterns from JSON configuration: config['global_replacements']['page_header_patterns']
+        global_replacements = self.data.get("global_replacements", {})
+        patterns = global_replacements.get("page_header_patterns", [])
+        
+        # Heuristic: headers are short (usually < 40 chars)
+        if len(text) > 40: return False
+
         for p in patterns:
-            if re.match(p, text, re.IGNORECASE):
-                # Ensure it has the core "NAN" or "ANN" structure
-                if "N" in text.upper():
-                    return True
+            try:
+                if re.match(p, text, re.IGNORECASE):
+                    # Safety: Ensure it has key characters to avoid matching small dialogue lines
+                    if "N" in text.upper() or "Á" in text.upper():
+                        return True
+            except re.error:
+                continue
         return False
 
     def process_text(self, text, file_path=None):
@@ -147,6 +163,9 @@ class OCRFixer:
         
         # 2. Global replacements
         text = self.apply_global_replacements(text)
+        
+        # 3. Fix stray capitals (using generalized rules)
+        text = self.apply_stray_caps_fix(text)
         
         dictionary = self.data.get("dictionary", {})
         verified = dictionary.get("verified", {})
@@ -173,12 +192,12 @@ class OCRFixer:
                 processed_lines.append(f"[l.{page_counter}]: #")
                 continue
 
-            # 3. Dictionary Corrections
             # We split by words but keep everything else
-            parts = re.split(r'(\b\w+\b)', line)
+            # Include apostrophes in word boundaries for Irish words like d'ól or ṫei’lg
+            parts = re.split(r"(\b[\w'’]+\b)", line)
             new_line_parts = []
             for part in parts:
-                if re.match(r'^\w+$', part):
+                if re.match(r"^[\w'’]+$", part):
                     # Check verified
                     if part in verified:
                         new_line_parts.append(verified[part])
