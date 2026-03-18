@@ -83,3 +83,36 @@ Check the regenerated `manannanXX.md` file to verify that your new rules worked 
 To prevent the dictionary from becoming corrupted (hallucinating mappings like `atá` -> `daoine`):
 * **Never use automated guessing tools** to bulk-import words unless you are mathematically validating the Levenshtein distance (how many letters changed).
 * If an OCR error completely mangled a word to the point where it shares no root letters with the correct word, add it as a `contextual` phrase surrounding the broken word, or fix it manually in the text file rather than poisoning the `verified` dictionary.
+
+## 5. Using the `fine_tune.py` Utility
+
+To speed up the data entry process, you can use the `fine_tune.py` script located in `/caibidlí/`. It accepts JSON files or raw JSON strings containing your fixes and mathematically categorizes them into either the `verified` (single words) or `contextual` (multi-word phrases/punctuation) dictionary sections safely.
+
+**Input Structure Example:**
+```json
+[
+  {
+    "FineTuneEntry": {
+      "Incorrect": "aċ a ineireaiina fein",
+      "Corrected": "aċ a méireanna féin"
+    }
+  },
+  {
+    "FineTuneEntry": {
+      "Incorrect": "speire",
+      "Corrected": "spéire"
+    }
+  }
+]
+```
+
+**Executing from CLI via File:**
+```bash
+python fine_tune.py --file my_fixes.json
+```
+
+**Executing from CLI via Raw String:**
+*(Note: Wrap the JSON string in single quotes)*
+```bash
+python fine_tune.py --json '{"FineTuneEntry": {"Incorrect": "ii", "Corrected": "nn"}}'
+```
