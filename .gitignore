@@ -23,3 +23,12 @@ export_job_20563495/
 
 # OS
 .DS_Store
+python-utils/FINE_TUNING_GUIDE.md
+python-utils/PROMPT_INFRASTRUCTURE.md
+python-utils/PROMPT_SYSTEM_RULES.md
+python-utils/PROMPT_GRAMMAR_RULES.md
+python-utils/PROMPT_INITIAL_PATCH_LIST.md
+python-utils/PROMPT_LEARNING_LOOP.md
+python-utils/WAYPOINT.md
+finetune.json
+python-utils/TASK Systematize OCR Corrections fo.txt
