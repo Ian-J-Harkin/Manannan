@@ -227,7 +227,7 @@ cruinne arís sinn?”
 “Comáinfidh luas Mhanannáin thar n-ais sinn díreach
 fé mar atá luas na cruinne ár gcomáint ar aghaidh anois.”
 
-“Ach conus a chomáinfidh luas Mhanannáin siar sinn?
+“Ach conus a chomáinfidh luas Mhanannáin siar sinn ?
 Ar aghaidh atáimíd ag dul anois, ach nuair a bheimíd ag
 teacht abhaile nách siar a bheimíd ag gluaiseacht?”
 
