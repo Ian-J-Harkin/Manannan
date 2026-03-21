@@ -1,0 +1,20 @@
+[
+  {
+    "FineTuneEntry": {
+      "Incorrect": "ṗláméid",
+      "Corrected": "ṗlánéid"
+    }
+  },
+  {
+    "FineTuneEntry": {
+      "Incorrect": "pláméid",
+      "Corrected": "plánéid"
+    }
+  },
+  {
+    "FineTuneEntry": {
+      "Incorrect": "an ṫarraing",
+      "Corrected": "an tarraing"
+    }
+  }  
+]
